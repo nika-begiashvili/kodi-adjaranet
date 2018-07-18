@@ -1,5 +1,6 @@
 import simplejson as json
 from httplib2 import Http
+from BeautifulSoup import BeautifulSoup
 import re
 import urllib2
 import sys
@@ -15,6 +16,8 @@ CATEGORY_MAP = {
     'new_release': 'Search/SearchResults?ajax=1&display=15&startYear=1900&endYear=2018&offset=0&orderBy=date&order%5Border%5D=data&order%5Bdata%5D=premiere&order%5Bmeta%5D=desc',
     'top_movies': 'Search/SearchResults?ajax=1&display=15&startYear=1900&endYear=2018&offset=15&orderBy=date&order%5Border%5D=data&order%5Bdata%5D=views&order%5Bmeta%5D=views-week'
 }
+TYPE_MOVIE = 1
+TYPE_TV_SERIES = 3
 
 base_url = sys.argv[0]
 addon_handle = int(sys.argv[1])
@@ -75,7 +78,15 @@ def search():
         (rsp_headers, json_data) = Http().request(search_url)
         data  = json.loads(json_data)
         for item in data['movies']['data']:
-            url = build_url({'mode': 'movie', 'id': item['id']})
+            
+            if item['type'] == TYPE_MOVIE:
+                mode = 'movie'
+            elif item['type'] == TYPE_TV_SERIES:
+                mode = 'tv_series'
+            else:
+                return
+
+            url = build_url({'mode': mode, 'id': item['id']})
             li = xbmcgui.ListItem(item['title_en'])
             li.setArt({
                 'icon': get_icon(item['id']),
@@ -88,6 +99,16 @@ def search():
     finally:
         xbmcplugin.endOfDirectory(addon_handle)
 
+def show_tv_series(show_id):
+    script_url = API_BASE + 'Movie/main?id=1000103&serie=1&js=1'
+    try:
+        (rsp_headers, html_data) = Http().request(script_url)
+        html = BeautifulSoup(html_data)
+        elements = html.find("span", { "class" : "innerSeries" })
+        for element in elements:
+            xbmc.log(str(element), xbmc.LOGWARNING)
+    except Exception, e:
+        xbmc.log('adjaranet: got http error fetching %s \n %s' % (script_url, str(e)), xbmc.LOGWARNING)
 
 def load_movie(movie_id):
     script_url = API_BASE + 'Movie/main?id='+ movie_id +'&js=1'
@@ -118,3 +139,6 @@ elif mode[0] == 'search':
 elif mode[0] == 'movie':
     movie_id = args.get('id', None)
     load_movie(movie_id[0])
+elif mode[0] == 'tv_series':
+    show_id = args.get('id', None)
+    show_tv_series(show_id)
