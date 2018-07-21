@@ -2,9 +2,9 @@
 <addon id="plugin.addon.adjaranet.client" name="Adjaranet" version="0.0.1" provider-name="You">
   <requires>
     <import addon="xbmc.python" version="2.1.0"/>
-    <import addon="script.module.simplejson" />
-    <import addon="script.module.httplib2" />
-    <import addon="script.module.beautifulsoup" />
+    <import addon="script.module.simplejson" version="3.0.0" />
+    <import addon="script.module.httplib2" version="0.8.0" />
+    <import addon="script.module.beautifulsoup" version="3.2.1" />
   </requires>
   <extension point="xbmc.python.pluginsource" library="addon.py">
     <provides>video</provides>

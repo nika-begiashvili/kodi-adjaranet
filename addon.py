@@ -9,6 +9,8 @@ import urlparse
 import xbmc
 import xbmcgui
 import xbmcplugin
+from lib import plugin
+from lib import common
 
 API_BASE = 'http://net.adjara.com/'
 STATIC_FILES = 'http://staticnet.adjara.com/'
@@ -21,16 +23,14 @@ TYPE_MOVIE = 'movie'
 TYPE_SEASONS = 'seasons'
 TYPE_EPISODES = 'episodes'
 
-base_url = sys.argv[0]
-addon_handle = int(sys.argv[1])
-args = urlparse.parse_qs(sys.argv[2][1:])
+base_url = plugin.baseUrl
+addon_handle = plugin.handle
+args = plugin.args
 find_var_regex = re.compile(r"""movieUrlEmpty\s*=\s*[\'\"](.+)[\'\"]""")
 langs_regex = re.compile(r"""movieLangs\s*=\s*[\'\"](.+)[\'\"]""")
 qualities_regex = re.compile(r"""movieQuals\s*=\s*[\'\"](.+)[\'\"]""")
 
-
-xbmcplugin.setContent(addon_handle, 'movies')
-
+plugin.setContent('movies')
 
 def get_icon(movie_id):
     movie_id = str(movie_id)
@@ -41,34 +41,13 @@ def get_cover(movie_id):
     movie_id = str(movie_id)
     return STATIC_FILES + 'moviecontent/%s/covers/1920x1080-%s.jpg' % (movie_id, movie_id)
 
-
-def build_url(query):
-    return base_url + '?' + urllib.urlencode(query)
-
-
-def add_category(label, category, iconImage='DefaultFolder.png', url=None):
-    if url is None:
-        url = build_url({'mode': 'category', 'category': category})
-    li = xbmcgui.ListItem(label, iconImage=iconImage)
-    xbmcplugin.addDirectoryItem(handle=addon_handle, url=url,
-                                listitem=li, isFolder=True)
-
-
-def main_screen():
-    add_category('Search', None, 'DefaultAddonsSearch.png',
-                 build_url({'mode': 'search'}))
-    add_category('New Releases', 'new_release')
-    add_category('Top Movies', 'top_movies')
-    xbmcplugin.endOfDirectory(addon_handle)
-
-
 def load_category(category):
     cat_url = API_BASE + CATEGORY_MAP[category]
     try:
         (_, json_data) = Http().request(cat_url)
         data = json.loads(json_data)
         for item in data['data']:
-            url = build_url({'mode': TYPE_MOVIE, 'id': id})
+            url = plugin.buildUrl({'mode': TYPE_MOVIE, 'id': id})
             li = build_kodi_list_item(get_movie_type(1), item['poster'], item['title_en'])
 
             xbmcplugin.addDirectoryItem(
@@ -114,7 +93,7 @@ def search():
         for item in data['movies']['data']:
             movie_type = get_movie_type(item['type'])
             id = item['id']
-            url = build_url({'mode': movie_type, 'id': id})
+            url = plugin.buildUrl({'mode': movie_type, 'id': id})
             li = build_kodi_list_item(movie_type, get_cover(id), item['title_en'])
             li.setArt({
                 'icon': get_icon(id),
@@ -134,8 +113,10 @@ def search():
         xbmcplugin.endOfDirectory(addon_handle)
 
 
-def load_movie(movie_id):
+def play(movie_id,season = None, episode = None):
     script_url = API_BASE + 'Movie/main?id=' + movie_id + '&js=1'
+    if not season is None:
+        script_url = script_url + '&serie=1'
     try:
         (_, html_data) = Http().request(script_url)
         match = re.search(find_var_regex, html_data)
@@ -143,10 +124,12 @@ def load_movie(movie_id):
             xbmc.log('can not find url at %s' % (script_url), xbmc.LOGWARNING)
             raise Exception('url not found')
 
-        url = match.group(1).replace(
-            '{lang}', 'English').replace('{quality}', '1500')
-        xbmc.log(url, xbmc.LOGWARNING)
+        url = match.group(1).replace('{lang}', 'English').replace('{quality}', '1500')
+        
+        if not season is None:
+            url = url.replace('{season}', "%02d" % (season,) ).replace('{episode}', "%02d" % (episode,))
 
+        xbmc.log(url, xbmc.LOGWARNING)
         play_item = xbmcgui.ListItem(path=url)
         xbmcplugin.setResolvedUrl(addon_handle, True, listitem=play_item)
     except Exception, e:
@@ -157,14 +140,13 @@ def load_movie(movie_id):
 def load_seasons(movie_id):
     script_url = API_BASE + 'Movie/main?id=' + movie_id + '&serie=1&js=1'
     try:
-    
-        (rsp, html_data) = Http().request(script_url)
-        xbmc.log("soup", xbmc.LOGWARNING)
+        (_, html_data) = Http().request(script_url)
         soup = BeautifulSoup(html_data)
-        seasons = soup.find('div', { "class" : "scrollB" })
+        mainDiv = soup.find(attrs = {'id': 'seasonsDiv'})
+        seasons = mainDiv.find('div', { "class" : "scrollB" })
         for span in seasons.findAll('span'):
             season = span.get('data-season')
-            url = build_url({'mode': TYPE_EPISODES, 'id': id, 'season': season})
+            url = plugin.buildUrl({'mode': TYPE_EPISODES, 'id': movie_id, 'season': season})
             li = build_kodi_list_item(get_movie_type(3), get_cover('movie_id'), 'Season ' + season)
             xbmcplugin.addDirectoryItem(handle=addon_handle, url=url, listitem=li, isFolder=True)
         
@@ -175,19 +157,24 @@ def load_seasons(movie_id):
         xbmcplugin.endOfDirectory(addon_handle)
 
 def load_episodes(movie_id, season):
-    script_url = API_BASE + 'Movie/main?id=' + movie_id + 'series=1&js=1'
+    script_url = API_BASE + 'Movie/main?id=' + movie_id + '&serie=1&js=1'
     try:
         (_, html_data) = Http().request(script_url)
-        soup = BeautifulSoup(html_data, 'html.parser')
-        seasons = soup.find('div', { "class" : "scrollB" })
-
-        for span in seasons.find_all('span'):
-            season = span.get('data-season')
-
-            url = build_url({'mode': TYPE_EPISODES, 'id': id, 'season': season})
-            li = build_kodi_list_item(TYPE_EPISODES, get_cover('movie_id'), 'Season ' + season)
+        soup = BeautifulSoup(html_data)
+        mainDiv = soup.find(attrs = {'id': 'episodesDiv'})
+        episodes = mainDiv.findAll('span', {'class': 'innerSeries '})
+        for episode in episodes:
+            if episode.get('data-season') != season:
+                continue
+            url = plugin.buildUrl({
+                'mode': TYPE_MOVIE,
+                'id': movie_id, 
+                'season': season, 
+                'episode': str( int(episode.get('data-serie')) + 1 )
+            })
+            li = build_kodi_list_item(TYPE_MOVIE, get_cover('movie_id'), episode.contents[0])
             xbmcplugin.addDirectoryItem(
-                handle=addon_handle, url=url, listitem=li, isFolder=True)
+                handle=addon_handle, url=url, listitem=li, isFolder=False)
         
     except Exception, e:
         xbmc.log('adjaranet: got http error fetching %s \n %s' %
@@ -199,7 +186,7 @@ def load_episodes(movie_id, season):
 mode = args.get('mode', None)
 
 if mode is None:
-    main_screen()
+    common.mainScreen()
 elif mode[0] == 'category':
     category = args.get('category', 'new_release')
     load_category(category[0])
@@ -207,11 +194,16 @@ elif mode[0] == 'search':
     search()
 elif mode[0] == TYPE_MOVIE:
     movie_id = args.get('id', None)
-    load_movie(movie_id[0])
+    season = args.get('season', None)
+    episode = args.get('episode', None)
+    if not season is None:
+        play(movie_id[0],int(season[0]),int(episode[0]))
+    else:
+        play(movie_id[0])
 elif mode[0] == TYPE_SEASONS:
-    xbmc.log('seasons', xbmc.LOGWARNING)
     movie_id = args.get('id', None)
     load_seasons(movie_id[0])
 elif mode[0] == TYPE_EPISODES:
     movie_id = args.get('id', None)
-    load_seasons(movie_id[0])
+    season = args.get('season', None)
+    load_episodes(movie_id[0],season[0])
