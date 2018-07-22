@@ -14,8 +14,6 @@ find_var_regex = re.compile(r"""movieUrlEmpty\s*=\s*[\'\"](.+)[\'\"]""")
 langs_regex = re.compile(r"""movieLangs\s*=\s*[\'\"](.+)[\'\"]""")
 qualities_regex = re.compile(r"""movieQuals\s*=\s*[\'\"](.+)[\'\"]""")
 
-plugin.setContent('movies')
-
 def load_movie(movieId, lang):
     scriptUrl = 'Movie/main?id=' + movieId + '&js=1'
     try:
@@ -36,6 +34,8 @@ def load_movie(movieId, lang):
 
 mode = plugin.args.get('mode', None)
 
+contentType = 'movies'
+
 if mode is None:
     common.mainScreen()
 elif mode[0] == 'category':
@@ -47,10 +47,14 @@ elif mode[0] == TYPE_LANGUAGES:
 elif mode[0] == TYPE_MOVIE:
     load_movie( plugin.getArg('id') , plugin.getArg('lang','eng'))
 elif mode[0] == TYPE_SEASONS:
+    contentType = 'tvshows'
     movie_id = plugin.args.get('id', None)
     tv_shows.loadSeasons( plugin.getArg('id'), plugin.getArg('lang','eng'))
 elif mode[0] == TYPE_EPISODES:
+    contentType = 'episodes'
     movie_id = plugin.args.get('id', None)
     tv_shows.loadEpisodes(plugin.getArg('id'), plugin.getArg('lang','eng'), plugin.getArg('season'))
 elif mode[0] == TYPE_EPISODE:
     tv_shows.loadEpisode( plugin.getArg('url') )
+
+plugin.setContent(contentType)

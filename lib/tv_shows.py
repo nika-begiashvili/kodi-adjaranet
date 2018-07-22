@@ -31,17 +31,31 @@ def loadEpisodes(movieId, lang, season):
     scriptUrl = 'Movie/main?id=' + movieId + '&serie=1&js=1'
     try:
         soup = utils.getHtml( scriptUrl )
+
+        showInfo = soup.find('div', {'id': 'movie-info'})
+        showTitle = showInfo.find('h1', {'class': 'originalTitle'})
+        imdb = showInfo.find('a', {'class': 'imdb'})
+        imdbNumber = imdb.get('href').split('/')[-1]
+
         episodes = soup.findAll('span', {"data-season": str(season)})
         del episodes[0]
+        cnt = 0
         for episode in episodes:
             langs = episode.findAll('div')
             for l in langs:
                 if lang in str(l):
                     path = l.get('data-href')
                     break
-
+            cnt = cnt + 1
             url = plugin.buildUrl({'mode': TYPE_EPISODE, 'url': path})
             li = utils.listItem(movieId,episode.contents[0],True)
+            li.setInfo('video', {
+                'episode': str( int( episode.get('data-serie') ) + 1 ),
+                'season': season,
+                'tvshowtitle': showTitle,
+                'title': episode.contents[0],
+                'imdbnumber': imdbNumber,
+            })
             xbmcplugin.addDirectoryItem(
                 handle=plugin.handle, url=url, listitem=li, isFolder=False)
 
