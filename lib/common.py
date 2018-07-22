@@ -2,6 +2,9 @@ from lib import plugin,utils
 import xbmcgui
 import xbmcplugin
 import xbmc
+import re
+
+langs_regex = re.compile(r"""movieLangs\s*=\s*[\'\"](.+)[\'\"]""")
 
 def addCategory(label, category, iconImage='DefaultFolder.png', url=None):
     if url is None:
@@ -18,30 +21,36 @@ def mainScreen():
     addCategory('Top Movies', 'top_movies')
     xbmcplugin.endOfDirectory(plugin.handle)
 
-
 TYPE_MOVIE = 'movie'
 TYPE_SEASONS = 'seasons'
 TYPE_EPISODE = 'episode'
 TYPE_EPISODES = 'episodes'
 TYPE_LANGUAGES = 'langs'
 
-def build_kodi_list_item(movie_type, poster, title):
-    li = xbmcgui.ListItem(title, poster)
-    if movie_type == TYPE_MOVIE:
-        playable = 'True'
-    else:
-        playable = 'False'
-    li.setProperty('IsPlayable', playable)
-    return li
+def loadLanguages(movieId, tvShow):
+    try:
+        scriptUrl ='Movie/main?id=' + movieId + '&js=1'
 
+        if tvShow == 'True':
+            scriptUrl = scriptUrl + '&serie=1'
+            mode = TYPE_SEASONS
+        else:
+            mode = TYPE_MOVIE
 
-def get_movie_type(type):
-    if type == 1:
-        return TYPE_MOVIE
-    elif type == 3:
-        return TYPE_SEASONS
-    else:
-        return TYPE_EPISODES
+        htmlData = utils.getResponse(scriptUrl)
+        match = re.search(langs_regex, htmlData)
+        langs = match.group(1).split(',')
+
+        for lang in langs:
+            url = plugin.buildUrl({'mode': mode, 'id': movieId, 'lang': lang})
+            li = utils.listItem(movieId,lang)
+            xbmcplugin.addDirectoryItem(
+                handle=plugin.handle, url=url, listitem=li, isFolder=(mode == TYPE_SEASONS))
+
+    except Exception, e:
+        plugin.log('error loading languages %s' % (str(e),) )
+    finally:
+        xbmcplugin.endOfDirectory(plugin.handle)
 
 def search():
     kb = xbmc.Keyboard('', 'Search for movie')
@@ -55,16 +64,10 @@ def search():
     try:
         data = utils.getJsonObject(searchUrl)
         for item in data['movies']['data']:
-            movie_type = get_movie_type(item['type'])
             id = item['id']
             url = plugin.buildUrl({'mode': TYPE_LANGUAGES, 'id': id,
-                             'tv_show': movie_type != TYPE_MOVIE})
-            li = build_kodi_list_item(
-                movie_type, utils.getCover(id), item['title_en'])
-            li.setArt({
-                'icon': utils.getIcon(id),
-                'landscape': utils.getCover(id)
-            })
+                             'tv_show': item['type'] != 1})
+            li = utils.listItem(id,item['title_en'])
             xbmcplugin.addDirectoryItem(
                 handle=plugin.handle, url=url, listitem=li, isFolder=True)
     except Exception, e:

@@ -2,17 +2,18 @@ import simplejson as json
 from httplib2 import Http
 from BeautifulSoup import BeautifulSoup
 from lib import plugin
+import xbmcgui
 
 API_BASE = 'http://net.adjara.com/'
 STATIC_FILES = 'http://staticnet.adjara.com/'
 
-def getIcon(movie_id):
-    movie_id = str(movie_id)
-    return STATIC_FILES + 'moviecontent/%s/covers/157x236-%s.jpg' % (movie_id, movie_id)
+def getIcon(movieId):
+    movieId = str(movieId)
+    return STATIC_FILES + 'moviecontent/%s/covers/157x236-%s.jpg' % (movieId, movieId)
 
-def getCover(movie_id):
-    movie_id = str(movie_id)
-    return STATIC_FILES + 'moviecontent/%s/covers/1920x1080-%s.jpg' % (movie_id, movie_id)
+def getCover(movieId):
+    movieId = str(movieId)
+    return STATIC_FILES + 'moviecontent/%s/covers/1920x1080-%s.jpg' % (movieId, movieId)
 
 def getResponse(endpoint):
     try:
@@ -37,3 +38,12 @@ def getHtml(endpoint):
     except Exception, e:
         plugin.log('Error parsing html %s \n %s' % (rsp,str(e)))
         return None
+
+def listItem(movieId,title,isPlayable = False):
+    li = xbmcgui.ListItem(title, getIcon(movieId))
+    li.setProperty('IsPlayable', str(isPlayable))
+    li.setArt({
+        'icon': getIcon(movieId),
+        'landscape': getCover(movieId)
+    })
+    return li

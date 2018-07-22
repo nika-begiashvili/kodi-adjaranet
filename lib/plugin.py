@@ -18,3 +18,11 @@ def buildUrl(query):
 
 def log(arg):
     xbmc.log(arg, xbmc.LOGWARNING)
+
+def getArg(arg, default = None):
+    global args
+    res = args.get(arg, None)
+    if res is None:
+        return default
+    else:
+        return res[0]
