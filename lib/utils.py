@@ -47,3 +47,11 @@ def listItem(movieId,title,isPlayable = False):
         'landscape': getCover(movieId)
     })
     return li
+
+def getInfo(htmlObject):
+    out = dict()
+    showInfo = htmlObject.find('div', {'id': 'movie-info'})
+    out['showTitle'] = str(showInfo.find('h2', {'class': 'originalTitle'}))
+    imdb = showInfo.find('a', {'class': 'imdb'})
+    out['imdbNumber'] = imdb.get('href').split('/')[-1]
+    return out

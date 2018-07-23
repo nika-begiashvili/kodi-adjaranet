@@ -3,8 +3,11 @@ import xbmcgui
 import xbmcplugin
 import xbmc
 import re
+from BeautifulSoup import BeautifulSoup
 
-langs_regex = re.compile(r"""movieLangs\s*=\s*[\'\"](.+)[\'\"]""")
+urlRegex = re.compile(r"""movieUrlEmpty\s*=\s*[\'\"](.+)[\'\"]""")
+langsRegex = re.compile(r"""movieLangs\s*=\s*[\'\"](.+)[\'\"]""")
+qualityRegex = re.compile(r"""movieQuals\s*=\s*[\'\"](.+)[\'\"]""")
 
 def addCategory(label, category, iconImage='DefaultFolder.png', url=None):
     if url is None:
@@ -38,14 +41,31 @@ def loadLanguages(movieId, tvShow):
             mode = TYPE_MOVIE
 
         htmlData = utils.getResponse(scriptUrl)
-        match = re.search(langs_regex, htmlData)
+        match = re.search(langsRegex, htmlData)
         langs = match.group(1).split(',')
+
+        if mode == TYPE_MOVIE:
+            match  = re.search(qualityRegex, htmlData)
+            quality = max( [int(x) for x in match.group(1).split(',')] )
+            match = re.search(urlRegex, htmlData)
+            url = match.group(1)
+            info = utils.getInfo(BeautifulSoup(htmlData))
 
         for lang in langs:
             url = plugin.buildUrl({'mode': mode, 'id': movieId, 'lang': lang})
             li = utils.listItem(movieId,lang)
-            xbmcplugin.addDirectoryItem(
-                handle=plugin.handle, url=url, listitem=li, isFolder=(mode == TYPE_SEASONS))
+            if mode == TYPE_MOVIE:
+                url = match.group(1).replace('{lang}', lang).replace('{quality}', str(quality))
+                li.setInfo('video', {
+                    'title': info['showTitle'],
+                    'imdbnumber': info['imdbNumber'],
+                })
+                li.setProperty('IsPlayable', 'True')
+                xbmcplugin.addDirectoryItem(
+                    handle=plugin.handle, url=url, listitem=li, isFolder=False)
+            else:
+                xbmcplugin.addDirectoryItem(
+                    handle=plugin.handle, url=url, listitem=li, isFolder=(mode == TYPE_SEASONS))
 
     except Exception, e:
         plugin.log('error loading languages %s' % (str(e),) )
