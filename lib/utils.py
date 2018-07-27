@@ -51,7 +51,7 @@ def listItem(movieId,title,isPlayable = False):
 def getInfo(htmlObject):
     out = dict()
     showInfo = htmlObject.find('div', {'id': 'movie-info'})
-    out['showTitle'] = str(showInfo.find('h2', {'class': 'originalTitle'}))
+    out['showTitle'] = showInfo.find('h2', {'class': 'originalTitle'}).contents[0]
     imdb = showInfo.find('a', {'class': 'imdb'})
     out['imdbNumber'] = imdb.get('href').split('/')[-1]
     return out

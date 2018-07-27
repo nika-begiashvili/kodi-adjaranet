@@ -7,6 +7,7 @@ TYPE_SEASONS = 'seasons'
 TYPE_EPISODE = 'episode'
 TYPE_EPISODES = 'episodes'
 TYPE_LANGUAGES = 'langs'
+TYPE_PLAY = 'play'
 
 def loadSeasons(movieId, lang):
     scriptUrl = 'Movie/main?id=' + movieId + '&serie=1&js=1'
@@ -41,17 +42,27 @@ def loadEpisodes(movieId, lang, season):
                 if lang in str(l):
                     path = l.get('data-href')
                     break
-            #url = plugin.buildUrl({'mode': TYPE_EPISODE, 'url': path})
-            li = utils.listItem(movieId,episode.contents[0],True)
-            li.setInfo('video', {
+
+            videoInfo = {
                 'episode': str( int( episode.get('data-serie') ) + 1 ),
                 'season': season,
                 'tvshowtitle': str(info['showTitle']),
+                'showlink': str(info['showTitle']),
                 'title': episode.contents[0],
                 'imdbnumber': info['imdbNumber'],
+            }
+            
+            li = utils.listItem(movieId,videoInfo['title'])
+            li.setInfo('video',videoInfo)
+            li.setContentLookup(False)
+            videoInfo.update({
+                'mode': TYPE_PLAY,
+                'url': path,
             })
+            url = plugin.buildUrl(videoInfo)
+
             xbmcplugin.addDirectoryItem(
-                handle=plugin.handle, url=path, listitem=li, isFolder=False)
+                handle=plugin.handle, url=url, listitem=li, isFolder=False)
 
     except Exception, e:
         plugin.log('error loading episodes %s \n %s' %

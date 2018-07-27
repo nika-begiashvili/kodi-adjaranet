@@ -9,6 +9,7 @@ TYPE_SEASONS = 'seasons'
 TYPE_EPISODE = 'episode'
 TYPE_EPISODES = 'episodes'
 TYPE_LANGUAGES = 'langs'
+TYPE_PLAY = 'play'
 
 mode = plugin.args.get('mode', None)
 contentType = 'movies'
@@ -31,6 +32,14 @@ elif mode[0] == TYPE_EPISODES:
     contentType = 'episodes'
     movie_id = plugin.args.get('id', None)
     tv_shows.loadEpisodes(plugin.getArg('id'), plugin.getArg('lang','eng'), plugin.getArg('season'))
+elif mode[0] == TYPE_PLAY:
+    path = plugin.getArg('url')
+    season = plugin.getArg('season')
+    episode = plugin.getArg('episode')
+    title = plugin.getArg('title')
+    tvShowTitle = plugin.getArg('tvshowtitle')
+    imdbNumber = plugin.getArg('imdbnumber')
+    common.playItem(path,season,episode,title,tvShowTitle,imdbNumber)
 #elif mode[0] == TYPE_EPISODE:
 #    tv_shows.loadEpisode( plugin.getArg('url') )
 

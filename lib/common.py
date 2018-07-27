@@ -29,6 +29,7 @@ TYPE_SEASONS = 'seasons'
 TYPE_EPISODE = 'episode'
 TYPE_EPISODES = 'episodes'
 TYPE_LANGUAGES = 'langs'
+TYPE_PLAY = 'play'
 
 def loadLanguages(movieId, tvShow):
     try:
@@ -55,22 +56,53 @@ def loadLanguages(movieId, tvShow):
             url = plugin.buildUrl({'mode': mode, 'id': movieId, 'lang': lang})
             li = utils.listItem(movieId,lang)
             if mode == TYPE_MOVIE:
-                url = match.group(1).replace('{lang}', lang).replace('{quality}', str(quality))
+                path = match.group(1).replace('{lang}', lang).replace('{quality}', str(quality))
                 li.setInfo('video', {
                     'title': info['showTitle'],
                     'imdbnumber': info['imdbNumber'],
                 })
-                li.setProperty('IsPlayable', 'True')
+                li.setContentLookup(False)
+                #li.setProperty('IsPlayable', 'True')
+                url = plugin.buildUrl({
+                    'mode': TYPE_PLAY,
+                    'url': path,
+                    'title': info['showTitle'],
+                    'imdbnumber': info['imdbNumber']
+                })
                 xbmcplugin.addDirectoryItem(
                     handle=plugin.handle, url=url, listitem=li, isFolder=False)
             else:
                 xbmcplugin.addDirectoryItem(
-                    handle=plugin.handle, url=url, listitem=li, isFolder=(mode == TYPE_SEASONS))
+                    handle=plugin.handle, url=url, listitem=li, isFolder=True)
 
     except Exception, e:
         plugin.log('error loading languages %s' % (str(e),) )
     finally:
         xbmcplugin.endOfDirectory(plugin.handle)
+
+
+def playItem(path, season = None, episode = None, title = None, tvShowTitle = None, imdbNumber = None):
+    item = xbmcgui.ListItem(path=path)
+    info = {
+        'episode': episode,
+        'season': season,
+        'tvshowtitle': tvShowTitle,
+        'showtitle': tvShowTitle,
+        'showlink': tvShowTitle,
+        'tvshowid': imdbNumber,
+        'title': title,
+        'imdbnumber': imdbNumber,
+    }
+    plugin.log("ADJNET: "+str(info))
+    if not season is None:
+        info['type'] = 'episode'
+        info['mediatype'] = 'episode'
+    else:
+        info['type'] = 'movie'
+        info['mediatype'] = 'movie'
+
+    item.setInfo('video',info)
+    xbmcplugin.setResolvedUrl(plugin.handle, True, listitem=item)
 
 def search():
     kb = xbmc.Keyboard('', 'Search for movie')
