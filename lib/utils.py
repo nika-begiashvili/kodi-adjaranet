@@ -2,6 +2,7 @@ import simplejson as json
 from httplib2 import Http
 from BeautifulSoup import BeautifulSoup
 from lib import plugin
+from HTMLParser import HTMLParser
 import xbmcgui
 
 API_BASE = 'http://net.adjara.com/'
@@ -52,6 +53,7 @@ def getInfo(htmlObject):
     out = dict()
     showInfo = htmlObject.find('div', {'id': 'movie-info'})
     out['showTitle'] = showInfo.find('h2', {'class': 'originalTitle'}).contents[0]
+    out['showTitle'] = HTMLParser().unescape(out['showTitle'])
     imdb = showInfo.find('a', {'class': 'imdb'})
     out['imdbNumber'] = imdb.get('href').split('/')[-1]
     return out
