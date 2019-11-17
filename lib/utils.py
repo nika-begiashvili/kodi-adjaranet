@@ -5,7 +5,7 @@ from lib import plugin
 from HTMLParser import HTMLParser
 import xbmcgui
 
-API_BASE = 'http://net.adjara.com/'
+API_BASE = 'https://api.adjaranet.com/api/v1/'
 STATIC_FILES = 'http://staticnet.adjara.com/'
 
 def getIcon(movieId):

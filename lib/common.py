@@ -1,13 +1,15 @@
-from lib import plugin,utils
+from lib import plugin, utils
 import xbmcgui
 import xbmcplugin
 import xbmc
 import re
 from BeautifulSoup import BeautifulSoup
 
+
 urlRegex = re.compile(r"""movieUrlEmpty\s*=\s*[\'\"](.+)[\'\"]""")
 langsRegex = re.compile(r"""movieLangs\s*=\s*[\'\"](.+)[\'\"]""")
 qualityRegex = re.compile(r"""movieQuals\s*=\s*[\'\"](.+)[\'\"]""")
+
 
 def addCategory(label, category, iconImage='DefaultFolder.png', url=None):
     if url is None:
@@ -19,10 +21,11 @@ def addCategory(label, category, iconImage='DefaultFolder.png', url=None):
 
 def mainScreen():
     addCategory('Search', None, 'DefaultAddonsSearch.png',
-                 plugin.buildUrl({'mode': 'search'}))
-    addCategory('New Releases', 'new_release')
-    addCategory('Top Movies', 'top_movies')
+                plugin.buildUrl({'mode': 'search'}))
+    # addCategory('New Releases', 'new_release')
+    # addCategory('Top Movies', 'top_movies')
     xbmcplugin.endOfDirectory(plugin.handle)
+
 
 TYPE_MOVIE = 'movie'
 TYPE_SEASONS = 'seasons'
@@ -31,9 +34,10 @@ TYPE_EPISODES = 'episodes'
 TYPE_LANGUAGES = 'langs'
 TYPE_PLAY = 'play'
 
+
 def loadLanguages(movieId, tvShow):
     try:
-        scriptUrl ='Movie/main?id=' + movieId + '&js=1'
+        scriptUrl = 'Movie/main?id=' + movieId + '&js=1'
 
         if tvShow == 'True':
             scriptUrl = scriptUrl + '&serie=1'
@@ -46,17 +50,18 @@ def loadLanguages(movieId, tvShow):
         langs = match.group(1).split(',')
 
         if mode == TYPE_MOVIE:
-            match  = re.search(qualityRegex, htmlData)
-            quality = max( [int(x) for x in match.group(1).split(',')] )
+            match = re.search(qualityRegex, htmlData)
+            quality = max([int(x) for x in match.group(1).split(',')])
             match = re.search(urlRegex, htmlData)
             url = match.group(1)
             info = utils.getInfo(BeautifulSoup(htmlData))
 
         for lang in langs:
             url = plugin.buildUrl({'mode': mode, 'id': movieId, 'lang': lang})
-            li = utils.listItem(movieId,lang)
+            li = utils.listItem(movieId, lang)
             if mode == TYPE_MOVIE:
-                path = match.group(1).replace('{lang}', lang).replace('{quality}', str(quality))
+                path = match.group(1).replace(
+                    '{lang}', lang).replace('{quality}', str(quality))
                 li.setInfo('video', {
                     'title': info['showTitle'],
                     'imdbnumber': info['imdbNumber'],
@@ -76,12 +81,12 @@ def loadLanguages(movieId, tvShow):
                     handle=plugin.handle, url=url, listitem=li, isFolder=True)
 
     except Exception, e:
-        plugin.log('error loading languages %s' % (str(e),) )
+        plugin.log('error loading languages %s' % (str(e),))
     finally:
         xbmcplugin.endOfDirectory(plugin.handle)
 
 
-def playItem(path, season = None, episode = None, title = None, tvShowTitle = None, imdbNumber = None):
+def playItem(path, season=None, episode=None, title=None, tvShowTitle=None, imdbNumber=None):
     item = xbmcgui.ListItem(path=path)
     info = {
         'episode': episode,
@@ -101,25 +106,28 @@ def playItem(path, season = None, episode = None, title = None, tvShowTitle = No
         info['type'] = 'movie'
         info['mediatype'] = 'movie'
 
-    item.setInfo('video',info)
+    item.setInfo('video', info)
     xbmcplugin.setResolvedUrl(plugin.handle, True, listitem=item)
 
+
 def search():
-    kb = xbmc.Keyboard('', 'Search for movie')
+    kb = xbmc.Keyboard('', 'Search for Movies')
     kb.doModal()
     if (kb.isConfirmed()):
         searchTerm = kb.getText()
     else:
         return
 
-    searchUrl = 'Home/quick_search?ajax=1&search=' + searchTerm
+    searchUrl = 'search-advanced?movie_filters%5Bwith_actors%5D=3&movie_filters%5Bwith_directors%5D=1&movie_filters%5Bkeyword%5D=_&movie_filters%5Byear_range%5D=1900%2C2019&movie_filters%5Binit%5D=true&filters%5Btype%5D=movie&keywords=' + \
+        searchTerm + '&page=1&per_page=20&source=adjaranet'
+        
     try:
         data = utils.getJsonObject(searchUrl)
-        for item in data['movies']['data']:
-            id = item['id']
-            url = plugin.buildUrl({'mode': TYPE_LANGUAGES, 'id': id,
-                             'tv_show': item['type'] != 1})
-            li = utils.listItem(id,item['title_en'])
+        for item in data['data']:
+            movieId = item['adjaraId']
+            url = plugin.buildUrl(
+                {'mode': TYPE_LANGUAGES, 'id': movieId, 'tv_show': item['isTvShow']})
+            li = utils.listItem(movieId, item['secondaryName'])
             xbmcplugin.addDirectoryItem(
                 handle=plugin.handle, url=url, listitem=li, isFolder=True)
     except Exception, e:
